@@ -6,6 +6,7 @@ api_key = os.getenv("DEEPSEEK_API_KEY")
 if not api_key:
     raise ValueError("请设置 DEEPSEEK_API_KEY 环境变量")
 
+print(api_key)
 # 初始化 OpenAI 客户端（假设 DeepSeek 的 API 兼容 OpenAI 格式）
 client = OpenAI(
     api_key=api_key,

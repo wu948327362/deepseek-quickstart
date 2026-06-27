@@ -1,0 +1,616 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>五子棋 · 深色极简</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at 30% 10%, #0b1a2e, #0a111f);
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            padding: 16px;
+        }
+
+        .game-container {
+            background: #101a28;
+            background-image: linear-gradient(145deg, #0f1b2b, #142233);
+            border-radius: 48px;
+            padding: 28px 28px 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), inset 0 1px 2px rgba(255, 255, 255, 0.06);
+            max-width: 700px;
+            width: fit-content;
+            margin: 0 auto;
+            transition: all 0.2s;
+        }
+
+        .board-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 32px;
+            background: #2c1f14;
+            background-image: radial-gradient(circle at 20% 30%, #5a3e2b, #2f1f12);
+            box-shadow: inset 0 0 0 1px rgba(255, 140, 50, 0.15), 0 12px 28px rgba(0, 0, 0, 0.7);
+            padding: 18px;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1 / 1;
+            max-width: 560px;
+            border-radius: 24px;
+            background: #d9b382;
+            background-image: linear-gradient(145deg, #e7c79a, #c7a16d);
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.3), 0 6px 10px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+            touch-action: none;
+        }
+
+        .panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 22px;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .status-area {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .turn-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.35);
+            padding: 8px 18px 8px 14px;
+            border-radius: 80px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .piece-preview {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #2b2b2b;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), inset 0 0 8px rgba(255, 255, 255, 0.2);
+            transition: background 0.2s;
+        }
+
+        .piece-preview.black-turn {
+            background: radial-gradient(circle at 35% 30%, #4f4f4f, #1a1a1a);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), inset 0 1px 4px #aaa;
+        }
+
+        .piece-preview.white-turn {
+            background: radial-gradient(circle at 35% 30%, #f9f9f9, #c0c0c0);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), inset 0 1px 6px white;
+        }
+
+        .turn-text {
+            color: #d6dde9;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            font-size: 1.1rem;
+            text-shadow: 0 2px 3px black;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: #1f2c3c;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #e0e9f5;
+            letter-spacing: 0.5px;
+            backdrop-filter: blur(4px);
+            background: rgba(30, 45, 65, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            transition: all 0.15s;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: #2b3e58;
+            transform: scale(1.02);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.7);
+            border-color: rgba(255, 215, 140, 0.1);
+        }
+
+        .btn:active {
+            transform: scale(0.94);
+            background: #1a2637;
+        }
+
+        .btn-undo {
+            background: rgba(40, 55, 80, 0.8);
+        }
+
+        .btn-reset {
+            background: rgba(65, 45, 45, 0.7);
+        }
+
+        /* 获胜模态框 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(6px);
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            animation: fadeIn 0.25s;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        .modal-card {
+            background: #16212e;
+            background: linear-gradient(145deg, #1b2a3a, #101a26);
+            border-radius: 60px;
+            padding: 42px 48px 48px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.9), inset 0 1px 2px rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 200, 100, 0.08);
+            text-align: center;
+            animation: modalPop 0.25s ease-out;
+        }
+
+        @keyframes modalPop {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #f5e7d3;
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+            margin-bottom: 8px;
+        }
+
+        .modal-sub {
+            font-size: 1.3rem;
+            color: #cbd5e3;
+            margin: 8px 0 22px;
+            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-piece {
+            display: inline-block;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #222;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.8), inset 0 0 10px rgba(255, 255, 255, 0.15);
+        }
+
+        .modal-piece.white {
+            background: radial-gradient(circle at 35% 30%, #fff, #b0b0b0);
+        }
+
+        .modal-piece.black {
+            background: radial-gradient(circle at 35% 30%, #555, #111);
+        }
+
+        .modal-btn {
+            background: #2f435e;
+            border: none;
+            padding: 14px 44px;
+            border-radius: 60px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #f0f4fc;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6);
+            cursor: pointer;
+            transition: 0.15s;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+            margin-top: 12px;
+        }
+
+        .modal-btn:hover {
+            background: #3e5a7a;
+            transform: scale(1.02);
+        }
+
+        .modal-btn:active {
+            transform: scale(0.94);
+        }
+
+        @media (max-width: 500px) {
+            .game-container { padding: 16px; }
+            .board-wrapper { padding: 10px; }
+            .panel { flex-direction: column; align-items: stretch; }
+            .status-area { justify-content: center; }
+            .btn-group { justify-content: center; }
+            .modal-card { padding: 32px 20px; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="board-wrapper">
+        <canvas id="gobanCanvas" width="600" height="600"></canvas>
+    </div>
+    <div class="panel">
+        <div class="status-area">
+            <div class="turn-indicator">
+                <div class="piece-preview black-turn" id="turnPreview"></div>
+                <span class="turn-text" id="turnText">黑棋走</span>
+            </div>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-undo" id="undoBtn">↩ 悔棋</button>
+            <button class="btn btn-reset" id="resetBtn">⟳ 重新开始</button>
+        </div>
+    </div>
+</div>
+
+<!-- 获胜 Modal -->
+<div class="modal-overlay" id="winModal">
+    <div class="modal-card">
+        <div class="modal-title">🏆 获胜！</div>
+        <div class="modal-sub" id="winnerDisplay">
+            <span class="modal-piece black" id="winnerPiece"></span>
+            <span id="winnerText">黑棋</span>
+        </div>
+        <button class="modal-btn" id="modalResetBtn">再来一局</button>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const canvas = document.getElementById('gobanCanvas');
+        const ctx = canvas.getContext('2d');
+        const turnPreview = document.getElementById('turnPreview');
+        const turnText = document.getElementById('turnText');
+        const winModal = document.getElementById('winModal');
+        const winnerPiece = document.getElementById('winnerPiece');
+        const winnerText = document.getElementById('winnerText');
+        const modalResetBtn = document.getElementById('modalResetBtn');
+
+        // 棋盘配置
+        const BOARD_SIZE = 15;          // 15x15 标准五子棋
+        const CELL_SIZE = canvas.width / (BOARD_SIZE + 1); // 约 37.5px
+        const OFFSET = CELL_SIZE;
+        const RADIUS = CELL_SIZE * 0.42;
+
+        // 状态
+        let board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
+        let currentPlayer = 'black'; // 'black' 或 'white'
+        let history = [];            // 存储 { row, col, player }
+        let gameOver = false;
+
+        // 初始化
+        function initBoard() {
+            board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
+            currentPlayer = 'black';
+            history = [];
+            gameOver = false;
+            winModal.classList.remove('active');
+            updateTurnUI();
+            drawBoard();
+        }
+
+        // 绘制棋盘 (木质 + 高对比网格)
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 木质底色 (暖木色)
+            const woodGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            woodGradient.addColorStop(0, '#d6b07a');
+            woodGradient.addColorStop(0.3, '#c69c6b');
+            woodGradient.addColorStop(0.7, '#b8895a');
+            woodGradient.addColorStop(1, '#a67c4b');
+            ctx.fillStyle = woodGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 木纹纹理 (细微杂色)
+            ctx.save();
+            ctx.globalAlpha = 0.07;
+            for (let i = 0; i < 120; i++) {
+                ctx.beginPath();
+                ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+                ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+                ctx.strokeStyle = '#3d2b1a';
+                ctx.lineWidth = 1.5 + Math.random() * 4;
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // 绘制网格 (高对比深色线)
+            ctx.strokeStyle = '#2c1b0e';
+            ctx.lineWidth = 1.8;
+            ctx.shadowColor = 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = 4;
+
+            // 垂直线
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                const x = OFFSET + i * CELL_SIZE;
+                ctx.beginPath();
+                ctx.moveTo(x, OFFSET);
+                ctx.lineTo(x, OFFSET + (BOARD_SIZE - 1) * CELL_SIZE);
+                ctx.stroke();
+            }
+
+            // 水平线
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                const y = OFFSET + i * CELL_SIZE;
+                ctx.beginPath();
+                ctx.moveTo(OFFSET, y);
+                ctx.lineTo(OFFSET + (BOARD_SIZE - 1) * CELL_SIZE, y);
+                ctx.stroke();
+            }
+
+            ctx.shadowBlur = 0;
+
+            // 星位 (天元 + 小目)
+            const starPoints = [
+                [3, 3], [11, 3], [7, 7], [3, 11], [11, 11]
+            ];
+            ctx.fillStyle = '#2c1b0e';
+            ctx.shadowBlur = 6;
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            starPoints.forEach(([col, row]) => {
+                const x = OFFSET + col * CELL_SIZE;
+                const y = OFFSET + row * CELL_SIZE;
+                ctx.beginPath();
+                ctx.arc(x, y, CELL_SIZE * 0.1, 0, 2 * Math.PI);
+                ctx.fillStyle = '#3d2b1a';
+                ctx.fill();
+                ctx.fillStyle = '#1f1208';
+                ctx.arc(x, y, CELL_SIZE * 0.06, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+            ctx.shadowBlur = 0;
+
+            // 绘制所有棋子 (带立体感)
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    const piece = board[row][col];
+                    if (!piece) continue;
+                    const x = OFFSET + col * CELL_SIZE;
+                    const y = OFFSET + row * CELL_SIZE;
+                    drawPiece(x, y, piece);
+                }
+            }
+        }
+
+        // 绘制立体棋子 (CSS 风格阴影/渐变)
+        function drawPiece(x, y, color) {
+            ctx.save();
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+            ctx.shadowBlur = 12;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 3;
+
+            const gradient = ctx.createRadialGradient(x - 6, y - 6, 4, x, y, RADIUS * 1.3);
+            if (color === 'black') {
+                gradient.addColorStop(0, '#5a5a5a');
+                gradient.addColorStop(0.3, '#2b2b2b');
+                gradient.addColorStop(0.8, '#111111');
+                gradient.addColorStop(1, '#050505');
+            } else {
+                gradient.addColorStop(0, '#fefefe');
+                gradient.addColorStop(0.3, '#e0e0e0');
+                gradient.addColorStop(0.7, '#b0b0b0');
+                gradient.addColorStop(1, '#7a7a7a');
+            }
+
+            ctx.beginPath();
+            ctx.arc(x, y, RADIUS, 0, 2 * Math.PI);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // 高光
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            const highlight = ctx.createRadialGradient(x - 5, y - 5, 2, x - 3, y - 3, RADIUS * 0.5);
+            if (color === 'black') {
+                highlight.addColorStop(0, 'rgba(200,200,200,0.25)');
+                highlight.addColorStop(1, 'rgba(255,255,255,0)');
+            } else {
+                highlight.addColorStop(0, 'rgba(255,255,255,0.9)');
+                highlight.addColorStop(1, 'rgba(255,255,255,0)');
+            }
+            ctx.beginPath();
+            ctx.arc(x, y, RADIUS, 0, 2 * Math.PI);
+            ctx.fillStyle = highlight;
+            ctx.fill();
+
+            // 边缘柔光
+            ctx.restore();
+        }
+
+        // 更新UI指示器
+        function updateTurnUI() {
+            if (gameOver) return;
+            if (currentPlayer === 'black') {
+                turnPreview.className = 'piece-preview black-turn';
+                turnText.textContent = '黑棋走';
+            } else {
+                turnPreview.className = 'piece-preview white-turn';
+                turnText.textContent = '白棋走';
+            }
+        }
+
+        // 检查五子连线 (8方向)
+        function checkWin(row, col, player) {
+            const directions = [[1, 0], [0, 1], [1, 1], [1, -1]];
+            for (const [dx, dy] of directions) {
+                let count = 1;
+                // 正方向
+                for (let step = 1; step < 5; step++) {
+                    const nr = row + dx * step;
+                    const nc = col + dy * step;
+                    if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) break;
+                    if (board[nr][nc] === player) count++; else break;
+                }
+                // 反方向
+                for (let step = 1; step < 5; step++) {
+                    const nr = row - dx * step;
+                    const nc = col - dy * step;
+                    if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) break;
+                    if (board[nr][nc] === player) count++; else break;
+                }
+                if (count >= 5) return true;
+            }
+            return false;
+        }
+
+        // 处理落子
+        function handlePlace(row, col) {
+            if (gameOver) return false;
+            if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return false;
+            if (board[row][col] !== null) return false;
+
+            // 落子
+            board[row][col] = currentPlayer;
+            history.push({ row, col, player: currentPlayer });
+
+            // 绘制
+            drawBoard();
+
+            // 检查胜利
+            if (checkWin(row, col, currentPlayer)) {
+                gameOver = true;
+                const winner = currentPlayer;
+                // 显示模态框
+                winnerPiece.className = `modal-piece ${winner}`;
+                winnerText.textContent = winner === 'black' ? '黑棋' : '白棋';
+                winModal.classList.add('active');
+                return true;
+            }
+
+            // 切换玩家
+            currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+            updateTurnUI();
+            return true;
+        }
+
+        // 悔棋
+        function undo() {
+            if (gameOver) return;
+            if (history.length === 0) return;
+
+            const last = history.pop();
+            board[last.row][last.col] = null;
+            // 如果悔棋后当前玩家不变？实际上悔棋后应该回到上一手玩家
+            // 但更合理：每次悔棋将 currentPlayer 设为上一步的玩家
+            if (history.length > 0) {
+                const prev = history[history.length - 1];
+                currentPlayer = prev.player;
+            } else {
+                currentPlayer = 'black'; // 没有棋子时默认黑棋
+            }
+            drawBoard();
+            updateTurnUI();
+        }
+
+        // 重置游戏
+        function resetGame() {
+            initBoard();
+            drawBoard();
+            winModal.classList.remove('active');
+        }
+
+        // 坐标转换 (canvas 点击 -> 格子)
+        function getGridPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clientX = (e.clientX || e.touches[0].clientX) - rect.left;
+            const clientY = (e.clientY || e.touches[0].clientY) - rect.top;
+            const canvasX = clientX * scaleX;
+            const canvasY = clientY * scaleY;
+
+            const col = Math.round((canvasX - OFFSET) / CELL_SIZE);
+            const row = Math.round((canvasY - OFFSET) / CELL_SIZE);
+            if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return null;
+            // 检查距离是否在合理范围内 (防止点到格子空隙)
+            const x = OFFSET + col * CELL_SIZE;
+            const y = OFFSET + row * CELL_SIZE;
+            const dist = Math.hypot(canvasX - x, canvasY - y);
+            if (dist > CELL_SIZE * 0.45) return null;
+            return { row, col };
+        }
+
+        // 事件监听
+        function onCanvasClick(e) {
+            e.preventDefault();
+            if (gameOver) return;
+            const pos = getGridPos(e);
+            if (!pos) return;
+            handlePlace(pos.row, pos.col);
+        }
+
+        canvas.addEventListener('click', onCanvasClick);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            if (!touch) return;
+            const fakeEvent = { clientX: touch.clientX, clientY: touch.clientY };
+            onCanvasClick(fakeEvent);
+        }, { passive: false });
+
+        // 按钮
+        document.getElementById('undoBtn').addEventListener('click', undo);
+        document.getElementById('resetBtn').addEventListener('click', resetGame);
+        modalResetBtn.addEventListener('click', resetGame);
+
+        // 启动
+        initBoard();
+        drawBoard();
+    })();
+</script>
+</body>
+</html>
+```
